@@ -11,6 +11,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"sort"
 )
 
 func main() {
@@ -22,12 +23,21 @@ func main() {
 	}
 
 	kc := kubernetes.NewForConfigOrDie(config)
-	nodes, err := kc.CoreV1().Nodes().List(metav1.ListOptions{})
+	objects, err := kc.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		log.Fatalln(err)
 	}
-	for _, node := range nodes.Items {
-		fmt.Println(node.Name)
+	if len(objects.Items) > 1 {
+		sort.SliceIsSorted(objects.Items, func(i, j int) bool {
+			if objects.Items[i].Namespace == objects.Items[j].Namespace {
+				return objects.Items[i].Name < objects.Items[j].Name
+			}
+			fmt.Println(objects.Items[i].Spec.PodCIDR)
+			return objects.Items[i].Namespace < objects.Items[j].Namespace
+		})
+	}
+	for _, node := range objects.Items {
+		fmt.Println(node.GroupVersionKind())
 	}
 }
 
